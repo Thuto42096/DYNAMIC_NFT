@@ -2,19 +2,18 @@
 pragma solidity ^0.8.28;
 
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
 import "@openzeppelin/contracts/interfaces/IERC4906.sol";
 
 
-contract LeftyNFT is Initializable, ERC721Upgradeable, 
-    OwnableUpgradeable, ReentrancyGuardUpgradeable, 
+contract THLNFT is Initializable, ERC721Upgradeable, 
+    OwnableUpgradeable, 
     UUPSUpgradeable, IERC4906 {
 
     uint256 public nextTokenId;
-    string public _baseURI; // Using Pinata for hosting metadata and images
+    string public baseURI; //Using Pinata for hosting metadata and images
     uint256 public constant MAX_POINTS = 20;
 
 
@@ -37,11 +36,21 @@ contract LeftyNFT is Initializable, ERC721Upgradeable,
     }
 
     function initialize(address initialOwner, string memory baseURI_)  public initializer{
-        _baseURI = baseURI_;
+        baseURI = baseURI_;
         __ERC721_init("G1 dNFT", "THLFT");
         __Ownable_init(initialOwner);
-        __ReentrancyGuard_init();
-        __UUPSUpgradeable_init();
+        //__UUPSUpgradeable_init();
+    }
+
+    function _update(address to, uint256 tokenId, address operator) internal override  returns (address) {
+        address currentOwner = ownerOf(tokenId);
+        if (currentOwner != address(0) && to != address(0)) {
+            revert("Transfer not allowed!");
+        }
+
+        address previousOwner = super._update(to, tokenId, operator);
+        return previousOwner;
+        
     }
 
     function mint (address to) public onlyOwner {
@@ -55,12 +64,26 @@ contract LeftyNFT is Initializable, ERC721Upgradeable,
     function updatePoints(uint256 tokenId, uint256 points) public onlyOwner {
         require(tokenPoints[tokenId] + points <= MAX_POINTS, "Points exceed maximum");
         tokenPoints[tokenId] = tokenPoints[tokenId] + points;
+
         emit PointsUpdated(tokenId, tokenPoints[tokenId]);
         emit UpdatedMetadata(tokenId);
     }
 
+    function tokenURI(uint256 tokenId) public view override returns (string memory) {
+        _requireOwned(tokenId);
+
+        // This takes your Pinata base URI and attaches the token ID
+        // Example: https://gateway.pinata.cloud/ipfs/CID/1.json
+        return string(abi.encodePacked(baseURI, Strings.toString(tokenId), ".json"));
+    }
+
     function setBaseURI(string memory baseURI_) public onlyOwner {
-        _baseURI = baseURI_;
+        baseURI = baseURI_;
+    }
+
+
+    function supportsInterface(bytes4 interfaceId) public view virtual override (ERC721Upgradeable, IERC165) returns (bool) {
+        return super.supportsInterface(interfaceId) || interfaceId == type(IERC4906).interfaceId;
     }
 
 
