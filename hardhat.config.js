@@ -14,7 +14,14 @@ module.exports = {
         },
     },
     networks: {
-        hardhat: {},
+        hardhat: {
+            // chainId 31337 by default; matches MetaMask's "Localhost 8545"
+        },
+        // Targets a separately running `npx hardhat node`. Accounts are read
+        // from the node's RPC (20 pre-funded 10000 ETH wallets).
+        localhost: {
+            url: "http://127.0.0.1:8545",
+        },
         sepolia: {
             url: process.env.SEPOLIA_RPC_URL || "",
             accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
