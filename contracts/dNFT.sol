@@ -8,8 +8,8 @@ import "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
 import "@openzeppelin/contracts/interfaces/IERC4906.sol";
 
 
-contract THLNFT is Initializable, ERC721Upgradeable, 
-    OwnableUpgradeable, 
+contract DompasNFT is Initializable, ERC721Upgradeable,
+    OwnableUpgradeable,
     UUPSUpgradeable, IERC4906 {
 
     uint256 public nextTokenId;
@@ -19,7 +19,7 @@ contract THLNFT is Initializable, ERC721Upgradeable,
 
 
     // Mapping
-    mapping (address => uint256) TokenOwnership; // Maps an address to the token ID of the NFT they own
+    mapping (address => uint256) public TokenOwnership; // Maps an address to the token ID of the NFT they own
     mapping (uint256 => uint256) public tokenPoints;
 
     // Reserve slot gap
@@ -37,7 +37,7 @@ contract THLNFT is Initializable, ERC721Upgradeable,
 
     function initialize(address initialOwner, string memory baseURI_)  public initializer{
         baseURI = baseURI_;
-        __ERC721_init("G1 dNFT", "THLFT");
+        __ERC721_init("Dompas NFT", "DOMPAS");
         __Ownable_init(initialOwner);
         //__UUPSUpgradeable_init();
     }
@@ -55,6 +55,7 @@ contract THLNFT is Initializable, ERC721Upgradeable,
 
     function mint (address to) public onlyOwner {
         require(balanceOf(to) == 0, "You are only allowed to mint one NFT and have already minted one");
+        TokenOwnership[to] = nextTokenId;
         _safeMint(to , nextTokenId);
         nextTokenId++;
 

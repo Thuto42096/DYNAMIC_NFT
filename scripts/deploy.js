@@ -7,7 +7,7 @@ async function main() {
     const baseURI = process.env.PINATA_BASE_URL + process.env.PINATA_CID_OF_NFT + "/";
     console.log("Base URI for metadata: ", baseURI);
 
-    const LNFTFactory = await ethers.getContractFactory("THLNFT");
+    const LNFTFactory = await ethers.getContractFactory("DompasNFT");
     const thlft = await upgrades.deployProxy(LNFTFactory, 
         [deployer.address, baseURI], { 
             initializer: 'initialize',
