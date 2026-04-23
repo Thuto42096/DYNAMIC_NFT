@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import Hand from "./Hand";
 import PassportCard from "./PassportCard";
 import Slot from "./Slot";
 import Particles from "./Particles";
@@ -84,16 +83,43 @@ export default function LoginScene({ onGranted }) {
         signerRef.current = signer;
         setAddress(addr);
       }
+      const activeAddress = address || (await signerRef.current.getAddress());
+
+      setPhase("signing");
       const signature = await signInMessage(signerRef.current);
-      const res = await mintNft({ walletAddress: address, signature });
-      if (!res.ok) throw new Error(res.message || "Mint failed");
-      // After mint, retry the full flow
-      setPhase("idle");
-      setTimeout(run, 400);
+
+      setPhase("inserting");
+      const mintRes = await mintNft({ walletAddress: activeAddress, signature });
+      if (!mintRes.ok) throw new Error(mintRes.message || "Mint failed");
+
+      setPhase("verifying");
+      const result = await verifyNft({ walletAddress: activeAddress, signature });
+      await wait(900);
+
+      if (result.ok && result.authorized) {
+        const tier = tierFromPoints(result.points);
+        setLastTier(tier);
+        setPhase("granted");
+        await wait(1400);
+        onGranted?.({
+          address: activeAddress,
+          tokenId: result.tokenId,
+          points: result.points,
+          tier,
+        });
+      } else {
+        throw new Error(result.message || "Verification failed after mint");
+      }
     } catch (e) {
-      setError(e?.message || "Mint failed");
+      const msg =
+        e?.shortMessage ||
+        e?.info?.error?.message ||
+        e?.message ||
+        "Mint failed";
+      setError(msg);
+      setPhase("denied");
     }
-  }, [address, run]);
+  }, [address, onGranted]);
 
   // Auto-reset denied state back to idle after a moment so user can retry
   useEffect(() => {
@@ -102,11 +128,26 @@ export default function LoginScene({ onGranted }) {
     return () => clearTimeout(t);
   }, [phase]);
 
+  const connect = useCallback(async () => {
+    setError("");
+    if (!hasWallet()) {
+      setError("No browser wallet detected. Install MetaMask to continue.");
+      return;
+    }
+    try {
+      const { signer, address: addr } = await connectWallet();
+      signerRef.current = signer;
+      setAddress(addr);
+    } catch (e) {
+      setError(e?.shortMessage || e?.message || "Could not connect wallet");
+    }
+  }, []);
+
   return (
     <div className="cyber-bg scanlines relative min-h-screen w-full overflow-hidden flex flex-col">
       <Particles count={40} />
 
-      <HeaderBar address={address} />
+      <HeaderBar address={address} onConnect={connect} />
 
       <div className="relative z-10 flex-1 flex flex-col items-center justify-center px-6">
         <Title phase={phase} />
@@ -132,7 +173,7 @@ function wait(ms) {
 
 // --- Sub-components below ---
 
-function HeaderBar({ address }) {
+function HeaderBar({ address, onConnect }) {
   return (
     <div className="relative z-20 flex items-center justify-between px-8 py-5 border-b border-white/5">
       <div className="flex items-center gap-3">
@@ -148,9 +189,23 @@ function HeaderBar({ address }) {
           </div>
         </div>
       </div>
-      <div className="font-body text-xs tracking-widest text-white/60 uppercase">
-        {address ? shortAddress(address) : "Unlinked"}
-      </div>
+      {address ? (
+        <div className="flex items-center gap-2 font-body text-xs tracking-widest uppercase">
+          <span
+            className="inline-block w-2 h-2 rounded-full bg-[#29ffa4]"
+            style={{ boxShadow: "0 0 8px #29ffa4" }}
+          />
+          <span className="text-white/80">{shortAddress(address)}</span>
+        </div>
+      ) : (
+        <button
+          onClick={onConnect}
+          className="font-display font-bold tracking-[0.25em] text-xs px-5 py-2 text-[#4dd6ff] border border-[#4dd6ff]/70 rounded-sm hover:bg-[#4dd6ff]/10 transition-colors"
+          style={{ boxShadow: "0 0 14px rgba(77,214,255,0.25)" }}
+        >
+          CONNECT WALLET
+        </button>
+      )}
     </div>
   );
 }
@@ -205,26 +260,18 @@ function SlotStage({ phase, tierHex }) {
   const isDenied = phase === "denied";
   const isNoNft = phase === "noNft";
 
+  // Card rests just above the authenticate button in idle, slides up into the
+  // slot during insert/verify, and fades into the slot on granted.
   const cardTransform = isGranted
-    ? "translate(-50%, -60px) scale(0.95)"
+    ? "translate(-50%, -80px) scale(0.9)"
     : isVerifying || isInserting
-    ? "translate(-50%, 30px)"
-    : isDenied || isNoNft
-    ? "translate(-50%, 260px)"
-    : "translate(-50%, 220px)";
+    ? "translate(-50%, -10px)"
+    : "translate(-50%, 140px)";
 
   const cardOpacity = isGranted ? 0 : 1;
 
-  const handTransform = isGranted
-    ? "translate(-50%, 120%)"
-    : isDenied || isNoNft
-    ? "translate(-50%, 80%)"
-    : phase === "idle"
-    ? "translate(-50%, 30%)"
-    : "translate(-50%, 0%)";
-
   return (
-    <div className="relative w-full max-w-[720px] h-[620px] flex items-start justify-center mt-4">
+    <div className="relative w-full max-w-[720px] h-[440px] flex items-start justify-center mt-4">
       <div className="absolute top-6 left-1/2 -translate-x-1/2">
         <Slot phase={phase} tierHex={tierHex} />
       </div>
@@ -243,17 +290,7 @@ function SlotStage({ phase, tierHex }) {
             : "drop-shadow(0 20px 30px rgba(0,0,0,0.6))",
         }}
       >
-        <PassportCard width={180} tierHex={tierHex} />
-      </div>
-
-      <div
-        className="absolute left-1/2 bottom-[-40px] z-20"
-        style={{
-          transform: handTransform,
-          transition: "transform 900ms cubic-bezier(0.22, 0.8, 0.3, 1)",
-        }}
-      >
-        <Hand width={360} />
+        <PassportCard width={150} tierHex={tierHex} />
       </div>
     </div>
   );

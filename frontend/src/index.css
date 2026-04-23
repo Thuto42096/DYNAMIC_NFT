@@ -115,16 +115,6 @@ body,
   100% { transform: translateX(120%); }
 }
 
-/* Hand lift from below */
-@keyframes hand-lift {
-  0%   { transform: translate(-50%, 100%); }
-  100% { transform: translate(-50%, 0%); }
-}
-@keyframes hand-retract {
-  0%   { transform: translate(-50%, 0%); }
-  100% { transform: translate(-50%, 110%); }
-}
-
 /* Card reject shake */
 @keyframes reject-shake {
   0%, 100% { transform: translate(-50%, 0) rotate(0); }
