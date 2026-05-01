@@ -43,14 +43,12 @@ contract DompasNFT is Initializable, ERC721Upgradeable,
     }
 
     function _update(address to, uint256 tokenId, address operator) internal override  returns (address) {
-        address currentOwner = ownerOf(tokenId);
+        address currentOwner = _ownerOf(tokenId);
         if (currentOwner != address(0) && to != address(0)) {
             revert("Transfer not allowed!");
         }
 
-        address previousOwner = super._update(to, tokenId, operator);
-        return previousOwner;
-        
+        return super._update(to, tokenId, operator);
     }
 
     function mint (address to) public onlyOwner {
