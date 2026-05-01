@@ -340,7 +340,7 @@ function Controls({ phase, onStart, onMint, error }) {
         </div>
       )}
 
-      {error && phase !== "noNft" && (
+      {error && (
         <div className="max-w-[520px] text-center font-body text-xs tracking-wider text-[#ff2e4d]/90 uppercase">
           {error}
         </div>

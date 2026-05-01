@@ -85,7 +85,8 @@ app.post('/verify-nft', async (req, res) => {
     });
   } catch (error) {
     console.error("Verification error:", error);
-    res.status(500).json({ authorized: false, message: "Error processing request" });
+    const msg = error?.shortMessage || error?.reason || error?.info?.error?.message || error?.message || "Error processing request";
+    res.status(500).json({ authorized: false, message: msg });
   }
 });
 
@@ -106,9 +107,12 @@ app.post('/mint', async (req, res) => {
       return res.status(409).json({ message: "Wallet already owns an NFT" });
     }
 
+    console.log(`[mint] submitting tx for ${walletAddress}`);
     const tx = await nftContract.mint(walletAddress);
+    console.log(`[mint] tx submitted: ${tx.hash} — waiting for confirmation…`);
     await tx.wait();
     const tokenId = await nftContract.TokenOwnership(walletAddress);
+    console.log(`[mint] confirmed tokenId=${tokenId.toString()}`);
 
     res.status(200).json({
       message: "Mint successful",
@@ -117,7 +121,8 @@ app.post('/mint', async (req, res) => {
     });
   } catch (error) {
     console.error("Mint error:", error);
-    res.status(500).json({ message: "Error processing request" });
+    const msg = error?.shortMessage || error?.reason || error?.info?.error?.message || error?.message || "Error processing request";
+    res.status(500).json({ message: msg });
   }
 });
 
